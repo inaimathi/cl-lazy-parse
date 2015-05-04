@@ -13,7 +13,7 @@
 (defmethod run! ((r rapid) (parser function))
   (funcall parser r))
 (defmethod run! ((r rapid) (str string))
-  (funcall (and>> (map 'list #'char>> str)) r))
+  (funcall (apply #'and>> (map 'list #'char>> str)) r))
 (defmethod run! ((r rapid) (chr character))
   (funcall (char>> chr) r))
 
@@ -21,7 +21,7 @@
 (defun failed? (thing) (eq thing +fail+))
 
 ;;;;;;;;;; Now then, basic composition
-(defun and>> (parsers)
+(defun and>> (&rest parsers)
   "Takes a list of parsers and matches them in sequence.
 If any of them fail, the entire expression fails."
   (lambda (r)
@@ -40,7 +40,7 @@ If any of them fail, the entire expression fails."
 			(reverse (cons v res))))))
 	(cont (next!))))))
 
-(defun or>> (parsers)
+(defun or>> (&rest parsers)
   "Takes a list of parsers and matches them in sequence.
 Returns the first successful one.
 If they all fail, the entire expression fails."
@@ -72,6 +72,52 @@ Returns the accumulated successes (the empty list, if there were none)."
 			(cont (next!))))))
 	(cont (next!))))))
 
+;;;;;;;;;; Basic transformation
+(defun with (parser fn)
+  (lambda (r)
+    (labels ((next! () (run! r parser))
+	     (cont (v)
+	       (cond ((paused-p v)
+		      (pause (cont (resume v))))
+		     ((failed? v) +fail+)
+		     (t (apply fn v)))))
+      (cont (next!)))))
+
+(defun on (parser fn)
+  (lambda (r)
+    (labels ((next! () (run! r parser))
+	     (cont (v)
+	       (cond ((paused-p v)
+		      (pause (cont (resume v))))
+		     ((failed? v) +fail+)
+		     (t (funcall fn v)))))
+      (cont (next!)))))
+
+(defmacro _fn ((&rest args) &body body)
+  (multiple-value-bind (final-args ignored)
+      (loop for a in args
+	 for s = (gensym "IGNORED")
+	 if (eq a '_) 
+	 collect s into res and collect s into vars
+	 else collect a into res
+	 finally (return (values res vars)))
+    `(lambda ,final-args
+       (declare (ignore ,@ignored))
+       ,@body)))
+
+(defmacro then (parser (&rest args) &body body)
+  (multiple-value-bind (final-args ignored)
+      (loop for a in args
+	 for s = (gensym "IGNORED")
+	 if (eq a '_) 
+	 collect s into res and collect s into vars
+	 else collect a into res
+	 finally (return (values res vars)))
+    `(with ,parser
+	   (lambda ,final-args
+	     (declare (ignore ,@ignored))
+	     ,@body))))
+
 ;;;;;;;;;; Basic parsers
 (defmethod char>> ((pred function))
   (lambda (r)
@@ -98,7 +144,6 @@ Returns the accumulated successes (the empty list, if there were none)."
     (or (= code 46) (>= 57 code 48))))
 
 ;;;; Example
-
 (defparameter *example* "GET /index.html HTTP/1.1
 Host: www.example.com
 Content-Length: 38
@@ -108,11 +153,15 @@ Content-Length: 38
 (defparameter +crlf+ (coerce (list #\return #\linefeed) 'string))
 
 (defparameter http-method>> 
-  (or>> (list "GET" "DELETE" "POST" "PUT")))
+  (or>> "GET" "DELETE" "POST" "PUT"))
+
+(defun to-string (seq)
+  (coerce seq 'string))
 
 (defparameter request-line>>
-  (and>> (list #'http-method " " (many>> (char>> #'non-space?)) " " 
-	       (and>> (list "HTTP/" (many>> (char>> #'floating?)))) +crlf+)))
+  (with (and>> http-method>> " " (many>> (char>> #'non-space?)) " HTTP/1.1" +crlf+)
+	(_fn (method _ uri _ _)
+	  (cons (to-string method) (to-string uri)))))
 
 (defun header-char? (c)
   (let ((code (char-code c)))
@@ -121,9 +170,18 @@ Content-Length: 38
   (> (char-code c) 13))
 
 (defparameter header>>
-  (and>> (list (many>> (char>> #'header-char?)) ": " (many>> (char>> #'header-val-char?)) +crlf+)))
+  (with (and>> (many>> (char>> #'header-char?)) ": " (many>> (char>> #'header-val-char?)) +crlf+)
+	(_fn (k _ v _)
+	  (cons (intern (string-upcase (to-string k)) :keyword)
+		(to-string v)))))
+
+(defparameter request>>
+  (with (and>> request-line>>
+	       (many>> header>>))
+	(lambda (req headers)
+	  (format t "~a~%" req)
+	  (format t "~{   ~a~%~}" headers))))
 
 (with-input-from-string (s *example*)
   (let ((r (rapid s)))
-    (run! r (and>> (list #'request-line
-			 (many>> #'header))))))
+    (run! r request>>)))
