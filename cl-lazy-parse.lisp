@@ -107,12 +107,12 @@ Content-Length: 38
 
 (defparameter +crlf+ (coerce (list #\return #\linefeed) 'string))
 
-(defun method (r)
+(defparameter http-method>> 
   (or>> (list "GET" "DELETE" "POST" "PUT")))
 
-(defun request-line (r)
-  (run! r (and>> (list #'method " " (many>> (char>> #'non-space?)) " " 
-		       (and>> (list "HTTP/" (many>> (char>> #'floating?)))) +crlf+))))
+(defparameter request-line>>
+  (and>> (list #'http-method " " (many>> (char>> #'non-space?)) " " 
+	       (and>> (list "HTTP/" (many>> (char>> #'floating?)))) +crlf+)))
 
 (defun header-char? (c)
   (let ((code (char-code c)))
@@ -120,8 +120,8 @@ Content-Length: 38
 (defun header-val-char? (c) 
   (> (char-code c) 13))
 
-(defun header (r)
-  (run! r (and>> (list (many>> (char>> #'header-char?)) ": " (many>> (char>> #'header-val-char?)) +crlf+))))
+(defparameter header>>
+  (and>> (list (many>> (char>> #'header-char?)) ": " (many>> (char>> #'header-val-char?)) +crlf+)))
 
 (with-input-from-string (s *example*)
   (let ((r (rapid s)))
