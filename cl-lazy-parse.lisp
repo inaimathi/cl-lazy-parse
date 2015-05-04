@@ -1,5 +1,6 @@
 (in-package #:cl-lazy-parse)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Basic lazy computation stuff 
 ;;; (avoiding calling them delay/force, because I suspect they ultimately won't be thunks)
 (defstruct paused fn)
@@ -8,8 +9,10 @@
 (defmethod resume ((p paused))
   (funcall (paused-fn p)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Parsers
 ;;; A parser is a function that might return a result, a +fail+ or a paused state.
+(defmethod run! ((r rapid) (n null)) nil)
 (defmethod run! ((r rapid) (parser function))
   (funcall parser r))
 (defmethod run! ((r rapid) (str string))
@@ -20,6 +23,7 @@
 (defparameter +fail+ (gensym "FAIL"))
 (defun failed? (thing) (eq thing +fail+))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Now then, basic composition
 (defun and>> (&rest parsers)
   "Takes a list of parsers and matches them in sequence.
@@ -72,6 +76,7 @@ Returns the accumulated successes (the empty list, if there were none)."
 			(cont (next!))))))
 	(cont (next!))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Basic transformation
 (defun with (parser fn)
   (lambda (r)
@@ -118,6 +123,7 @@ Returns the accumulated successes (the empty list, if there were none)."
 	     (declare (ignore ,@ignored))
 	     ,@body))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Basic parsers
 (defmethod char>> ((pred function))
   (lambda (r)
@@ -143,6 +149,7 @@ Returns the accumulated successes (the empty list, if there were none)."
   (let ((code (char-code c)))
     (or (= code 46) (>= 57 code 48))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Example
 (defparameter *example* "GET /index.html HTTP/1.1
 Host: www.example.com
