@@ -52,11 +52,14 @@ Content-Length: 38
 ;;   (let ((r (rapid s)))
 ;;     (run! r request>>)))
 
+(defmethod keys ((h hash-table))
+  (loop for k being the hash-keys of h collect k))
+
 (defmethod test-server ((port integer) &key (host usocket:*wildcard-host*))
   (let ((server (socket-listen host port :reuse-address t))
 	(conns (make-hash-table)))
     (unwind-protect
-	 (loop (loop for ready in (wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
+	 (loop (loop for ready in (wait-for-input (cons server (keys conns)) :ready-only t)
 		  do (process-ready ready conns)))
       (flet ((kill-sock! (sock)
 	       (loop while (socket-close sock))))
@@ -82,7 +85,7 @@ Content-Length: 38
 	  (t
 	   (format t "PARSED!~%~a~%~%" res)))))
 
-;; (defparameter *sock* (usocket:socket-connect "localhost" 5008))
+;; (defparameter *sock* (usocket:socket-connect "localhost" 5000))
 ;; (write-string "GET /test HTTP/1.1" (socket-stream *sock*))
 ;; (write-char #\return (socket-stream *sock*))
 ;; (write-char #\linefeed (socket-stream *sock*))
