@@ -1,6 +1,6 @@
 ;;;; package.lisp
 
 (defpackage #:cl-lazy-parse
-  (:use #:cl)
+  (:use #:cl #:usocket)
   (:shadow #:get))
 

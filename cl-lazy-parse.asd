@@ -5,9 +5,10 @@
   :author "Your Name <your.name@example.com>"
   :license "Specify license here"
   :serial t
-  :depends-on (#:flexi-streams)
+  :depends-on (#:flexi-streams #:usocket)
   :components ((:file "package")
 	       (:file "queue")
+	       (:file "lazy")
 	       (:file "rapid")
                (:file "cl-lazy-parse")))
 
