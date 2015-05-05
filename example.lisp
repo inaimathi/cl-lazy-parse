@@ -8,13 +8,20 @@ Content-Length: 38
 
 ")
 
-(defparameter +crlf+ (coerce (list #\return #\linefeed) 'string))
+(defparameter *example2* "POST /index.html HTTP/1.1
+Host: www.example.com
+Content-Length: 38
 
-(defparameter http-method>> 
-  (or>> "GET" "DELETE" "POST" "PUT"))
+")
 
 (defun to-string (seq)
   (coerce seq 'string))
+
+(defparameter crlf>>
+  (to-string (list #\return #\linefeed)))
+
+(defparameter http-method>> 
+  (or>> "GET" "DELETE" "POST" "PUT"))
 
 (defun space? (c) (eql c #\space))
 (defun non-space? (c) (not (space? c)))
@@ -23,7 +30,7 @@ Content-Length: 38
     (or (= code 46) (>= 57 code 48))))
 
 (defparameter request-line>>
-  (with (and>> http-method>> " " (many>> (char>> #'non-space?)) " HTTP/1.1" +crlf+)
+  (with (and>> http-method>> " " (many>> (char>> #'non-space?)) " HTTP/1.1" crlf>>)
 	(_fn (method _ uri _ _)
 	  (format t "Got the request line (~s ~s)...~%" method uri)
 	  (cons (to-string method) (to-string uri)))))
@@ -35,7 +42,7 @@ Content-Length: 38
   (> (char-code c) 13))
 
 (defparameter header>>
-  (with (and>> (many>> (char>> #'header-char?)) ": " (many>> (char>> #'header-val-char?)) +crlf+)
+  (with (and>> (many>> (char>> #'header-char?)) ": " (many>> (char>> #'header-val-char?)) crlf>>)
 	(_fn (k _ v _)
 	  (format t "Got a header (~s ~s)...~%" k v)
 	  (cons (intern (string-upcase (to-string k)) :keyword)
@@ -83,7 +90,8 @@ Content-Length: 38
 	   (format t "Still waiting...~%")
 	   (setf (gethash ready conns) res))
 	  (t
-	   (format t "PARSED!~%~a~%~%" res)))))
+	   (format t "PARSED!~%~a~%~%" res)
+	   (remhash ready conns)))))
 
 ;; (defparameter *sock* (usocket:socket-connect "localhost" 5000))
 ;; (write-string "GET /test HTTP/1.1" (socket-stream *sock*))
@@ -97,6 +105,10 @@ Content-Length: 38
 ;; (force-output (socket-stream *sock*))
 
 ;; (write-string "Content-Type: text/plain" (socket-stream *sock*))
+;; (write-char #\return (socket-stream *sock*))
+;; (write-char #\linefeed (socket-stream *sock*))
+;; (force-output (socket-stream *sock*))
+
 ;; (write-char #\return (socket-stream *sock*))
 ;; (write-char #\linefeed (socket-stream *sock*))
 ;; (force-output (socket-stream *sock*))

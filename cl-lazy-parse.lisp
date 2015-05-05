@@ -6,10 +6,29 @@
 (defmethod run! ((r rapid) (n null)) nil)
 (defmethod run! ((r rapid) (parser function))
   (funcall parser r))
-(defmethod run! ((r rapid) (str string))
-  (funcall (apply #'and>> (map 'list #'char>> str)) r))
 (defmethod run! ((r rapid) (chr character))
   (funcall (char>> chr) r))
+
+
+;;;;; TODO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Make parsers recursively reversible, so that you can define the run! string fn as
+;;  (funcall (apply #'and>> (map 'list #'char>> str)) r)
+(defmethod run! ((r rapid) (str string))
+  (funcall (string->parser str) r))
+
+(defun string->parser (str)
+  (let ((lst (coerce str 'list)))
+    (lambda (r)
+      (labels ((cont (v ct)
+		 (cond ((paused-p v) 
+			(pause (cont (resume v) ct)))
+		       ((equal lst v)
+			(coerce (loop repeat (length str) collect (char! r)) 'string))
+		       ((and (> (length str) ct) (alexandria:starts-with-subseq v lst))
+			(cont (peek! r :count (+ ct 1)) (+ ct 1)))
+		       (t +fail+))))
+	(cont (peek! r) 1)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter +fail+ (gensym "FAIL"))
 (defun failed? (thing) (eq thing +fail+))
@@ -124,7 +143,7 @@ Returns the accumulated successes (the empty list, if there were none)."
 		     ((funcall pred v)
 		      v)
 		     (t 
-		      (_push-peeked! r v)
+		      (unchar! r v)
 		      +fail+))))
       (cont (run! r #'char!)))))
 

@@ -52,3 +52,6 @@
   (cond ((> (peeked-ct r) 0)
 	 (_pop-peeked! r))
 	(t (_getc! (stream-of r)))))
+
+(defmethod unchar! ((r rapid) (c character))
+  (_push-peeked! r c))
