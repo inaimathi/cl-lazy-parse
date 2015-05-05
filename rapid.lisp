@@ -29,6 +29,8 @@
 (defmethod take ((n integer) (q queue))
   (take n (messages q)))
 
+;;;;;;;;;; External interface
+;;; Basic calls
 (defmethod peek! ((r rapid) &key (count 1))
   (assert (> count 0))
   (if (>= (peeked-ct r) count)
@@ -55,3 +57,14 @@
 
 (defmethod unchar! ((r rapid) (c character))
   (_push-peeked! r c))
+
+;;; Sugar
+(defmacro with-rapid ((var stream) &body body)
+  `(let ((,var (rapid ,stream)))
+     ,@body))
+
+(defmacro with-rapid-string ((var string) &body body)
+  (let ((s (gensym "S")))
+    `(with-input-from-string (,s ,string)
+       (let ((,var (rapid ,s)))
+	 ,@body))))
