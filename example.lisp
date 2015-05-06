@@ -1,27 +1,24 @@
 (in-package :cl-lazy-parse)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Example
-(defparameter *example* "GET /index.html HTTP/1.1
+;;;; The Example
+(defparameter *example* 
+  "GET /index.html HTTP/1.1
 Host: www.example.com
 Content-Length: 38
 
 ")
 
-(defparameter *example2* "POST /index.html HTTP/1.1
+(defparameter *example2* 
+  "POST /index.html HTTP/1.1
 Host: www.example.com
 Content-Length: 38
 
 ")
 
+;;;; Predicates and utility
 (defun to-string (seq)
   (coerce seq 'string))
-
-(defparameter crlf>>
-  (to-string (list #\return #\linefeed)))
-
-(defparameter http-method>> 
-  (or>> "GET" "DELETE" "POST" "PUT"))
 
 (defun space? (c) (eql c #\space))
 (defun non-space? (c) (not (space? c)))
@@ -29,17 +26,24 @@ Content-Length: 38
   (let ((code (char-code c)))
     (or (= code 46) (>= 57 code 48))))
 
-(defparameter request-line>>
-  (with (and>> http-method>> " " (many>> (char>> #'non-space?)) " HTTP/1.1" crlf>>)
-	(_fn (method _ uri _ _)
-	  (format t "Got the request line (~s ~s)...~%" method uri)
-	  (cons (to-string method) (to-string uri)))))
-
 (defun header-char? (c)
   (let ((code (char-code c)))
     (or (= code 45) (>= 122 code 65))))
 (defun header-val-char? (c) 
   (> (char-code c) 13))
+
+;;;; Parsers
+(defparameter crlf>>
+  (to-string (list #\return #\linefeed)))
+
+(defparameter http-method>> 
+  (or>> "GET" "DELETE" "POST" "PUT"))
+
+(defparameter request-line>>
+  (with (and>> http-method>> " " (many>> (char>> #'non-space?)) " HTTP/1.1" crlf>>)
+	(_fn (method _ uri _ _)
+	  (format t "Got the request line (~s ~s)...~%" method uri)
+	  (cons (to-string method) (to-string uri)))))
 
 (defparameter header>>
   (with (and>> (many>> (char>> #'header-char?)) ": " (many>> (char>> #'header-val-char?)) crlf>>)
@@ -59,6 +63,7 @@ Content-Length: 38
 ;;   (let ((r (rapid s)))
 ;;     (run! r request>>)))
 
+;;;; A test server
 (defmethod keys ((h hash-table))
   (loop for k being the hash-keys of h collect k))
 
@@ -93,22 +98,22 @@ Content-Length: 38
 	   (format t "PARSED!~%~a~%~%" res)
 	   (remhash ready conns)))))
 
-;; (defparameter *sock* (usocket:socket-connect "localhost" 5000))
-;; (write-string "GET /test HTTP/1.1" (socket-stream *sock*))
-;; (write-char #\return (socket-stream *sock*))
-;; (write-char #\linefeed (socket-stream *sock*))
-;; (force-output (socket-stream *sock*))
+(defparameter *sock* (usocket:socket-connect "localhost" 5000))
+(write-string "GET /test HTTP/1.1" (socket-stream *sock*))
+(write-char #\return (socket-stream *sock*))
+(write-char #\linefeed (socket-stream *sock*))
+(force-output (socket-stream *sock*))
 
-;; (write-string "Host: www.example.com" (socket-stream *sock*))
-;; (write-char #\return (socket-stream *sock*))
-;; (write-char #\linefeed (socket-stream *sock*))
-;; (force-output (socket-stream *sock*))
+(write-string "Host: www.example.com" (socket-stream *sock*))
+(write-char #\return (socket-stream *sock*))
+(write-char #\linefeed (socket-stream *sock*))
+(force-output (socket-stream *sock*))
 
-;; (write-string "Content-Type: text/plain" (socket-stream *sock*))
-;; (write-char #\return (socket-stream *sock*))
-;; (write-char #\linefeed (socket-stream *sock*))
-;; (force-output (socket-stream *sock*))
+(write-string "Content-Type: text/plain" (socket-stream *sock*))
+(write-char #\return (socket-stream *sock*))
+(write-char #\linefeed (socket-stream *sock*))
+(force-output (socket-stream *sock*))
 
-;; (write-char #\return (socket-stream *sock*))
-;; (write-char #\linefeed (socket-stream *sock*))
-;; (force-output (socket-stream *sock*))
+(write-char #\return (socket-stream *sock*))
+(write-char #\linefeed (socket-stream *sock*))
+(force-output (socket-stream *sock*))

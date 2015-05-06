@@ -9,7 +9,6 @@
 (defmethod run! ((r rapid) (chr character))
   (funcall (char>> chr) r))
 
-
 ;;;;; TODO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Make parsers recursively reversible, so that you can define the run! string fn as
 ;;  (funcall (apply #'and>> (map 'list #'char>> str)) r)
@@ -90,13 +89,12 @@ Returns the accumulated successes (the empty list, if there were none)."
 ;;;;;;;;;; Basic transformation
 (defun with (parser fn)
   (lambda (r)
-    (labels ((next! () (run! r parser))
-	     (cont (v)
+    (labels ((cont (v)
 	       (cond ((paused-p v)
 		      (pause (cont (resume v))))
 		     ((failed? v) +fail+)
 		     (t (apply fn v)))))
-      (cont (next!)))))
+      (cont (run! r parser)))))
 
 (defun on (parser fn)
   (lambda (r)
@@ -120,19 +118,6 @@ Returns the accumulated successes (the empty list, if there were none)."
        (declare (ignore ,@ignored))
        ,@body)))
 
-(defmacro then (parser (&rest args) &body body)
-  (multiple-value-bind (final-args ignored)
-      (loop for a in args
-	 for s = (gensym "IGNORED")
-	 if (eq a '_) 
-	 collect s into res and collect s into vars
-	 else collect a into res
-	 finally (return (values res vars)))
-    `(with ,parser
-	   (lambda ,final-args
-	     (declare (ignore ,@ignored))
-	     ,@body))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Basic parsers
 (defmethod char>> ((pred function))
@@ -145,7 +130,7 @@ Returns the accumulated successes (the empty list, if there were none)."
 		     (t 
 		      (unchar! r v)
 		      +fail+))))
-      (cont (run! r #'char!)))))
+      (cont (char! r)))))
 
 (defmethod char>> ((pred character))
   (char>> (lambda (c) (eql c pred))))

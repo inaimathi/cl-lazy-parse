@@ -1,7 +1,6 @@
 (in-package #:cl-lazy-parse)
 
 ;;;;;;;;;; Rapids are streams that don't block
-;; TODO: Make peeking efficient.
 (defclass rapid ()
   ((stream-of :reader stream-of :initarg :stream-of)
    (peeked :accessor peeked :initform (queue))))
@@ -42,10 +41,7 @@
 			  (take count (peeked r)))
 			 (t
 			  (_push-peeked! r v)
-			  (let ((res (read-char-no-hang s)))
-			    (if res
-				(cont res (- ct 1))
-				(cont (pause (_getc! s)) ct)))))))
+			  (cont (_getc! s) (- ct 1))))))
 	  (cont (_getc! s) (- count 1 (peeked-ct r)))))))
 
 (defmethod char! ((r rapid))
@@ -55,3 +51,14 @@
 
 (defmethod unchar! ((r rapid) (c character))
   (_push-peeked! r c))
+
+;;; Sugar
+(defmacro with-rapid ((var stream) &body body)
+  `(let ((,var (rapid ,stream)))
+     ,@body))
+
+(defmacro with-rapid-string ((var string) &body body)
+  (let ((s (gensym "S")))
+    `(with-input-from-string (,s ,string)
+       (let ((,var (rapid ,s)))
+	 ,@body))))
