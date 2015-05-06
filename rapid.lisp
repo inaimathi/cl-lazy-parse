@@ -8,21 +8,21 @@
 
 (defmethod peeked-ct ((r rapid)) (len (peeked r)))
 
-(defmethod _push-peeked! ((r rapid) (c character))
+(defmethod push-peeked! ((r rapid) (c character))
   (push! c (peeked r)))
 
-(defmethod _pop-peeked! ((r rapid))
+(defmethod pop-peeked! ((r rapid))
   (pop! (peeked r)))
 
 (defmethod rapid ((s stream))
   (make-instance 'rapid :stream-of s))
 
-(defmethod _getc! ((s stream))
+(defmethod getc! ((s stream))
   (let ((res (read-char-no-hang s)))
-    (or res (pause (_getc! s)))))
+    (or res (pause (getc! s)))))
 
-(defmethod _getc! ((r rapid))
-  (_getc! (stream-of r)))
+(defmethod getc! ((r rapid))
+  (getc! (stream-of r)))
 
 (defmethod take ((n integer) (lst list))
   (loop repeat n for elem in lst collect elem))
@@ -40,23 +40,20 @@
 		   (cond ((paused-p v)
 			  (pause (cont (resume v) ct)))
 			 ((= ct 0)
-			  (_push-peeked! r v)
+			  (push-peeked! r v)
 			  (take count (peeked r)))
 			 (t
-			  (_push-peeked! r v)
-			  (let ((res (read-char-no-hang s)))
-			    (if res
-				(cont res (- ct 1))
-				(cont (pause (_getc! s)) ct)))))))
-	  (cont (_getc! s) (- count 1 (peeked-ct r)))))))
+			  (push-peeked! r v)
+			  (cont (getc! s) (- ct 1))))))
+	  (cont (getc! s) (- count 1 (peeked-ct r)))))))
 
 (defmethod char! ((r rapid))
   (cond ((> (peeked-ct r) 0)
-	 (_pop-peeked! r))
-	(t (_getc! (stream-of r)))))
+	 (pop-peeked! r))
+	(t (getc! (stream-of r)))))
 
 (defmethod unchar! ((r rapid) (c character))
-  (_push-peeked! r c))
+  (push-peeked! r c))
 
 ;;; Sugar
 (defmacro with-rapid ((var stream) &body body)
