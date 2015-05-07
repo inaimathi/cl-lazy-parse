@@ -124,3 +124,6 @@ Returns the accumulated successes (the empty list, if there were none)."
 (defmethod char>> ((pred string))
   (let ((lst (coerce pred 'list)))
     (char>> (lambda (c) (member c lst)))))
+
+(defun not-char>> (char)
+  (char>> (lambda (c) (not (eql c char)))))
