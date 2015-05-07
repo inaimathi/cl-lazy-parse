@@ -61,18 +61,3 @@
 
 (defmethod unread! ((r rapid) &key (count 1))
   (unread! (cached r) :count count))
-
-;;; Sugar
-(defmacro with-rapid ((var stream) &body body)
-  `(let ((,var (rapid ,stream)))
-     ,@body))
-
-(defmacro with-rapid-string ((var string) &body body)
-  (let ((s (gensym "S")))
-    `(with-input-from-string (,s ,string)
-       (with-rapid (,var ,s) ,@body))))
-
-(defmacro with-rapid-file ((var filespec) &body body)
-  (let ((s (gensym "S")))
-    `(with-open-file (,s ,filespec)
-       (with-rapid (,var ,s) ,@body))))

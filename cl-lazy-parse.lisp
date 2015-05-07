@@ -11,6 +11,15 @@
 (defmethod run! ((r rapid) (str string))
   (funcall (apply #'and>> (map 'list #'char>> str)) r))
 
+(defmethod run! ((s stream) parser)
+  (run! (rapid s) parser))
+(defmethod run! ((path pathname) parser)
+  (with-open-file (s path)
+    (run! s parser)))
+(defmethod run! ((str string) parser)
+  (with-input-from-string (s str)
+    (run! s parser)))
+
 (defparameter +fail+ (gensym "FAIL"))
 (defun failed? (thing) (eq thing +fail+))
 
