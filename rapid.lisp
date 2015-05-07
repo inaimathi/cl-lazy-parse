@@ -70,5 +70,9 @@
 (defmacro with-rapid-string ((var string) &body body)
   (let ((s (gensym "S")))
     `(with-input-from-string (,s ,string)
-       (let ((,var (rapid ,s)))
-	 ,@body))))
+       (with-rapid (,var ,s) ,@body))))
+
+(defmacro with-rapid-file ((var filespec) &body body)
+  (let ((s (gensym "S")))
+    `(with-open-file (,s ,filespec)
+       (with-rapid (,var ,s) ,@body))))

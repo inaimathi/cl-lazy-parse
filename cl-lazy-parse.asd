@@ -5,7 +5,7 @@
   :author "Your Name <your.name@example.com>"
   :license "Specify license here"
   :serial t
-  :depends-on (#:alexandria #:flexi-streams #:usocket)
+  :depends-on (#:flexi-streams #:usocket)
   :components ((:file "package")
 	       (:file "queue")
 	       (:file "lazy")
