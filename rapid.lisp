@@ -1,56 +1,62 @@
 (in-package #:cl-lazy-parse)
 
-;;;;;;;;;; Rapids are streams that don't block
+;;;;;;;;;; Buffer structure
+(defstruct buffer arr size (end-ix 0) (read-ix 0))
+(defun buffer (&key (initial-size 512))
+  (make-buffer :arr (make-string initial-size) :size initial-size))
+
+(defmethod more? ((b buffer)) 
+  (and (> (buffer-end-ix b) (buffer-read-ix b)) (> (buffer-end-ix b) 0)))
+
+(defmethod place! ((b buffer) (c character))
+  (let ((arr (buffer-arr b)))
+    (when (= (buffer-end-ix b) (length arr))
+      (setf (buffer-arr b) 
+	    (concatenate 'string arr (make-string (length arr))))))
+  (setf (aref (buffer-arr b) (buffer-end-ix b)) c)
+  (incf (buffer-end-ix b))
+  c)
+
+(defmethod read! ((b buffer))
+  (when (more? b)
+    (let ((c (aref (buffer-arr b) (buffer-read-ix b))))
+      (incf (buffer-read-ix b))
+      c)))
+
+(defmethod unread! ((b buffer) &key (count 1))
+  (setf (buffer-read-ix b)
+	(max 0 (- (buffer-read-ix b) count))))
+
+;;;;;;;;;; Rapids are streams that don't block on peek! or char! operations
 (defclass rapid ()
   ((stream-of :reader stream-of :initarg :stream-of)
-   (peeked :accessor peeked :initform (queue))))
+   (cached :reader cached :initform (buffer) :initarg :cached)))
 
-(defmethod peeked-ct ((r rapid)) (len (peeked r)))
+(defmethod rapid ((s stream) &key (buffer-size 256))
+  (make-instance 'rapid :stream-of s :cached (buffer :initial-size buffer-size)))
 
-(defmethod _push-peeked! ((r rapid) (c character))
-  (push! c (peeked r)))
+(defmethod getc! ((r rapid))
+  (let ((res (read-char-no-hang (stream-of r))))
+    (if res
+	(place! (cached r) res)
+	(pause (getc! r)))))
 
-(defmethod _pop-peeked! ((r rapid))
-  (pop! (peeked r)))
-
-(defmethod rapid ((s stream))
-  (make-instance 'rapid :stream-of s))
-
-(defmethod _getc! ((s stream))
-  (let ((res (read-char-no-hang s)))
-    (or res (pause (_getc! s)))))
-
-(defmethod _getc! ((r rapid))
-  (_getc! (stream-of r)))
-
-(defmethod take ((n integer) (lst list))
-  (loop repeat n for elem in lst collect elem))
-(defmethod take ((n integer) (q queue))
-  (take n (messages q)))
-
-(defmethod peek! ((r rapid) &key (count 1))
-  (assert (> count 0))
-  (if (>= (peeked-ct r) count)
-      (take count (peeked r))
-      (let ((s (stream-of r)))
-	(labels ((cont (v ct)
-		   (cond ((paused-p v)
-			  (pause (cont (resume v) ct)))
-			 ((= ct 0)
-			  (_push-peeked! r v)
-			  (take count (peeked r)))
-			 (t
-			  (_push-peeked! r v)
-			  (cont (_getc! s) (- ct 1))))))
-	  (cont (_getc! s) (- count 1 (peeked-ct r)))))))
-
+;;;;;;;;;; External interface
+;;; Basic calls
 (defmethod char! ((r rapid))
-  (cond ((> (peeked-ct r) 0)
-	 (_pop-peeked! r))
-	(t (_getc! (stream-of r)))))
+  (unless (more? (cached r))
+    (let ((res (getc! r)))
+      (when (paused-p res)
+	(pause (char! r)))))
+  (read! (cached r)))
 
 (defmethod unchar! ((r rapid) (c character))
-  (_push-peeked! r c))
+  (declare (ignore c))
+  (unread! (cached r))
+  nil)
+
+(defmethod unread! ((r rapid) &key (count 1))
+  (unread! (cached r) :count count))
 
 ;;; Sugar
 (defmacro with-rapid ((var stream) &body body)

@@ -1,7 +1,7 @@
 (in-package :cl-lazy-parse)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; The Example
+;;;; Example
 (defparameter *example* 
   "GET /index.html HTTP/1.1
 Host: www.example.com
@@ -98,22 +98,22 @@ Content-Length: 38
 	   (format t "PARSED!~%~a~%~%" res)
 	   (remhash ready conns)))))
 
-(defparameter *sock* (usocket:socket-connect "localhost" 5000))
-(write-string "GET /test HTTP/1.1" (socket-stream *sock*))
-(write-char #\return (socket-stream *sock*))
-(write-char #\linefeed (socket-stream *sock*))
-(force-output (socket-stream *sock*))
+;; (defparameter *sock* (usocket:socket-connect "localhost" 5000))
+;; (write-string "GET /test HTTP/1.1" (socket-stream *sock*))
+;; (write-char #\return (socket-stream *sock*))
+;; (write-char #\linefeed (socket-stream *sock*))
+;; (force-output (socket-stream *sock*))
 
-(write-string "Host: www.example.com" (socket-stream *sock*))
-(write-char #\return (socket-stream *sock*))
-(write-char #\linefeed (socket-stream *sock*))
-(force-output (socket-stream *sock*))
+;; (write-string "Host: www.example.com" (socket-stream *sock*))
+;; (write-char #\return (socket-stream *sock*))
+;; (write-char #\linefeed (socket-stream *sock*))
+;; (force-output (socket-stream *sock*))
 
-(write-string "Content-Type: text/plain" (socket-stream *sock*))
-(write-char #\return (socket-stream *sock*))
-(write-char #\linefeed (socket-stream *sock*))
-(force-output (socket-stream *sock*))
+;; (write-string "Content-Type: text/plain" (socket-stream *sock*))
+;; (write-char #\return (socket-stream *sock*))
+;; (write-char #\linefeed (socket-stream *sock*))
+;; (force-output (socket-stream *sock*))
 
-(write-char #\return (socket-stream *sock*))
-(write-char #\linefeed (socket-stream *sock*))
-(force-output (socket-stream *sock*))
+;; (write-char #\return (socket-stream *sock*))
+;; (write-char #\linefeed (socket-stream *sock*))
+;; (force-output (socket-stream *sock*))
