@@ -1,9 +1,9 @@
 (in-package #:cl-lazy-parse)
 
 ;;;;;;;;;; Buffer structure
-(defstruct buffer arr size (end-ix 0) (read-ix 0))
+(defstruct buffer arr (end-ix 0) (read-ix 0))
 (defun buffer (&key (initial-size 512))
-  (make-buffer :arr (make-string initial-size) :size initial-size))
+  (make-buffer :arr (make-string initial-size)))
 
 (defmethod more? ((b buffer)) 
   (and (> (buffer-end-ix b) (buffer-read-ix b)) (> (buffer-end-ix b) 0)))
@@ -27,7 +27,11 @@
   (setf (buffer-read-ix b)
 	(max 0 (- (buffer-read-ix b) count))))
 
-;;;;;;;;;; Rapids are streams that don't block on peek! or char! operations
+(defmethod clear! ((b buffer))
+  (setf (buffer-read-ix b) 0
+	(buffer-end-ix b) 0))
+
+;;;;;;;;;; Rapids are streams that don't block or char! operations, and might pause them instead
 (defclass rapid ()
   ((stream-of :reader stream-of :initarg :stream-of)
    (cached :reader cached :initform (buffer) :initarg :cached)))
