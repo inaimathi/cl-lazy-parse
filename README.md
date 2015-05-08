@@ -9,29 +9,29 @@ This is a non-blocking, stream-based parser library. The original use case was p
 
 ### Trivial Example
 
-CL-USER> (ql:quickload :cl-lazy-parse)
-To load "cl-lazy-parse":
-  Load 1 ASDF system:
-    cl-lazy-parse
-; Loading "cl-lazy-parse"
-[package cl-lazy-parse]...
-(:CL-LAZY-PARSE)
-
-CL-USER> (in-package :cl-lazy-parse)
-#<PACKAGE "CL-LAZY-PARSE">
-
-CL-LAZY-PARSE> (run! "testing" "test")
-(#\t #\e #\s #\t)
-4
-
-CL-LAZY-PARSE> (run! "testing" "nope")
-#:FAIL1129
-
-CL-LAZY-PARSE> (run! "testing" (and>> (char>> #\t) (many>> (not-char>> #\t))))
-(#\t (#\e #\s))
-3
-
-CL-LAZY-PARSE> 
+	CL-USER> (ql:quickload :cl-lazy-parse)
+	To load "cl-lazy-parse":
+	  Load 1 ASDF system:
+	    cl-lazy-parse
+	; Loading "cl-lazy-parse"
+	[package cl-lazy-parse]...
+	(:CL-LAZY-PARSE)
+	
+	CL-USER> (in-package :cl-lazy-parse)
+	#<PACKAGE "CL-LAZY-PARSE">
+	
+	CL-LAZY-PARSE> (run! "testing" "test")
+	(#\t #\e #\s #\t)
+	4
+	
+	CL-LAZY-PARSE> (run! "testing" "nope")
+	#:FAIL1129
+	
+	CL-LAZY-PARSE> (run! "testing" (and>> (char>> #\t) (many>> (not-char>> #\t))))
+	(#\t (#\e #\s))
+	3
+	
+	CL-LAZY-PARSE> 
 
 ### Exported Functions
 
