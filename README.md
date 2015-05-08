@@ -48,6 +48,8 @@ This is a non-blocking, stream-based parser library. The original use case was p
 ### TODO
 
 - Define `run-many!`, which should run the given parser as many times as possible, resetting the input buffer each time
+	- Maybe multiples? I could see you wanting to do different things on a `failed?` result. For instance, you may want to skip to some character, close the stream, or try to run some alternate parser
+		- To be fair, that last one is exactly what `or>>` is for
 - Make the invocation of `run!` on a `string` more efficient (it should just start with said string as the initial buffer contents; no stream stuff involved).
 - Document exported functions
 - Document some non-trivial use cases
