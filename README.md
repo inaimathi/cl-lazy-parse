@@ -49,3 +49,5 @@ CL-LAZY-PARSE>
 
 - Define `run-many!`, which should run the given parser as many times as possible, resetting the input buffer each time
 - Make the invocation of `run!` on a `string` more efficient (it should just start with said string as the initial buffer contents; no stream stuff involved).
+- Document exported functions
+- Document some non-trivial use cases
