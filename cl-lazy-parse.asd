@@ -7,7 +7,6 @@
   :serial t
   :depends-on (#:flexi-streams #:usocket)
   :components ((:file "package")
-	       (:file "queue")
 	       (:file "lazy")
 	       (:file "rapid")
                (:file "cl-lazy-parse")))
