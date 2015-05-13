@@ -90,7 +90,9 @@ Returns the accumulated successes (the empty list, if there were none)."
 	       (cond ((paused-p v)
 		      (pause (multiple-value-call #'cont (resume v))))
 		     ((failed? v) +fail+)
-		     (t (values (apply fn v) ct)))))
+		     ((listp v)
+		      (values (apply fn v) ct))
+		     (t (values (funcall fn v) ct)))))
       (multiple-value-call #'cont (run! r parser)))))
 
 (defmacro _fn ((&rest args) &body body)

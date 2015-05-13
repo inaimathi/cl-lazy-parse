@@ -96,6 +96,21 @@ Content-Length: 38
 	   (setf (gethash ready conns) res))
 	  (t
 	   (format t "PARSED!~%~a~%~%" res)
+	   (let ((stream (socket-stream ready)))
+	     (flet ((write-lns (&rest strings)
+		      (loop for s in strings
+			 do (write-string s stream)
+			 do (write-char #\return stream)
+			 do (write-char #\linefeed stream))))
+	       (ignore-errors
+		 (write-lns 
+		  "HTTP/1.1 200 Ok"
+		  "Content-Type: text/plain; charset=utf-8"
+		  "Content-Length: 12"
+		  ""
+		  "Hello There!"))
+	       (ignore-errors
+		 (socket-close ready))))
 	   (remhash ready conns)))))
 
 ;; (defparameter *sock* (usocket:socket-connect "localhost" 5000))
