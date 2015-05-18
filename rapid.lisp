@@ -34,16 +34,37 @@
 ;;;;;;;;;; Rapids are streams that don't block or char! operations, and might pause them instead
 (defclass rapid ()
   ((stream-of :reader stream-of :initarg :stream-of)
-   (cached :reader cached :initform (buffer) :initarg :cached)))
+   (cached :reader cached :initform (buffer) :initarg :cached)
 
-(defmethod rapid ((s stream) &key (buffer-size 256))
-  (make-instance 'rapid :stream-of s :cached (buffer :initial-size buffer-size)))
+   (max-age :reader max-age :initarg :max-age)
+   (created :reader created :initform (get-universal-time))
+   (max-pauses :reader max-pauses :initarg :max-pauses)
+   (pauses :accessor pauses :initform 0)
+   (allowance :accessor allowance :initarg :allowance)))
+
+(defmethod rapid ((s stream) &key (buffer-size 256) (max-age 1000) (max-size 10000) (max-pauses 50))
+  (make-instance 
+   'rapid 
+   :stream-of s :cached (buffer :initial-size buffer-size)
+   :max-age max-age :allowance max-size :max-pauses max-pauses))
+
+(define-condition rapid-error (error) ())
+(define-condition rapid-too-long (rapid-error) ())
+(define-condition rapid-too-slow (rapid-error) ())
+(define-condition rapid-too-old (rapid-error) ())
 
 (defmethod getc! ((r rapid))
+  (cond 
+    ((>= 0 (allowance r)) (error 'rapid-too-long))
+    ((> (pauses r) (max-pauses r)) (error 'rapid-too-slow))
+    ((> (- (get-universal-time) (created r)) (max-age r)) (error 'rapid-too-old)))
   (let ((res (read-char-no-hang (stream-of r))))
-    (if res
-	(place! (cached r) res)
-	(pause (getc! r)))))
+    (cond (res
+	   (decf (allowance r))
+	   (place! (cached r) res))
+	  (t
+	   (incf (pauses r))
+	   (pause (getc! r))))))
 
 ;;;;;;;;;; External interface
 ;;; Basic calls
