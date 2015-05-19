@@ -114,11 +114,6 @@ Returns the accumulated successes (the empty list, if there were none)."
 		     (t (values (funcall fn v) ct)))))
       (multiple-value-call #'cont (run! r parser)))))
 
-(defun with-log (parser message)
-  (with parser 
-	(lambda (&rest ln)
-	  (format t "~a ~s~%" message ln))))
-
 (defmacro _fn ((&rest args) &body body)
   (multiple-value-bind (final-args ignored)
       (loop for a in args
