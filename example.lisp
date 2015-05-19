@@ -2,66 +2,98 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Example
-(defparameter *example* 
+(defparameter *examples*
   "GET /index.html HTTP/1.1
 Host: www.example.com
-Content-Length: 38
 
-")
-
-(defparameter *example2* 
+"
   "POST /index.html HTTP/1.1
 Host: www.example.com
-Content-Length: 38
+Content-Length: 11
 
-")
+a=1&b=2&c=3"
+
+  "GET /index.html?a=1&b=2 HTTP/1.1
+Host: www.example.com
+
+"
+  "POST /index.html?foo=123&bar=456 HTTP/1.1
+Host: www.example.com
+Content-Length: 11
+
+a=1&b=2&c=3")
 
 ;;;; Predicates and utility
 (defun to-string (seq)
   (coerce seq 'string))
 
-(defun space? (c) (eql c #\space))
-(defun non-space? (c) (not (space? c)))
-(defun floating? (c) 
-  (let ((code (char-code c)))
-    (or (= code 46) (>= 57 code 48))))
+(defun to-key (seq)
+  (intern (string-upcase (to-string seq)) :keyword))
 
 (defun header-char? (c)
   (let ((code (char-code c)))
     (or (= code 45) (>= 122 code 65))))
-(defun header-val-char? (c) 
-  (> (char-code c) 13))
+
+(defun snd>> (parser) (with parser (_fn (_ p) p)))
 
 ;;;; Parsers
-(defparameter crlf>>
-  (to-string (list #\return #\linefeed)))
+(defparameter crlf>> (and>> #\return #\linefeed))
 
-(defparameter http-method>> 
-  (or>> "GET" "DELETE" "POST" "PUT"))
+(defparameter param>>
+  (and>> (many>> (none-of>> "=& ")) "=" (many>> (none-of>> "& ")) (optionally>> #\&)))
 
 (defparameter request-line>>
-  (with (and>> http-method>> " " (many>> (char>> #'non-space?)) " HTTP/1.1" crlf>>)
-	(_fn (method _ uri _ _)
-	  (format t "Got the request line (~s ~s)...~%" method uri)
-	  (cons (to-string method) (to-string uri)))))
+  (and>> (or>> "GET" "POST" "PUT" "DELETE") " " 
+	  (many>> (none-of>> "? "))
+	  (optionally>> (snd>> (and>> "?" (many>> param>>))))
+	  " HTTP/1.1" crlf>>))
 
 (defparameter header>>
-  (with (and>> (many>> (char>> #'header-char?)) ": " (many>> (char>> #'header-val-char?)) crlf>>)
-	(_fn (k _ v _)
-	  (format t "Got a header (~s ~s)...~%" k v)
-	  (cons (intern (string-upcase (to-string k)) :keyword)
-		(to-string v)))))
+  (and>> (many>> (char>> #'header-char?)) ": " (many>> (none-of>> '(#\return #\linefeed))) crlf>>))
 
-(defparameter request>>
-  (with (and>> request-line>>
-	       (many>> header>>))
-	(lambda (req headers)
-	  (format t "~a~%" req)
-	  (format t "~{   ~a~%~}" headers))))
+(defparameter request-stateless>>
+  (and>> request-line>>
+	 (many>> header>>)
+	 crlf>>
+	 (optionally>> (many>> param>>))))
 
-;; (with-input-from-string (s *example*)
-;;   (let ((r (rapid s)))
-;;     (run! r request>>)))
+(defun request>> ()
+  (let ((method)
+	(uri)
+	(headers)
+	(parameters)
+	(content-length 0)
+	(content-type))
+    (let ((par>>
+	   (with param>>
+		 (_fn (k _ v _)
+		   (push (cons (to-key k) (to-string v)) parameters)))))
+      (with (and>> 
+	     ;;; request-line
+	     (with (or>> "GET" "POST" "PUT" "DELETE")
+		   (lambda (&rest m) 
+		     (format t "Setting method!~%")
+		     (setf method (to-key m))))
+	     " " (many>> (none-of>> "? ")) (optionally>> (and>> "?" (many>> par>>)))
+	     " HTTP/1.1" crlf>>
+
+	     ;;; headers
+	     (many>> 
+	      (with header>>
+		    (_fn (key _ val _)
+		      (let ((k (to-key key))
+			    (v (to-string val)))
+			(case k
+			  (:content-length (setf content-length (parse-integer v)))
+			  (:content-type (setf content-type v))
+			  (t (push (cons k v) headers))))
+		      nil)))
+
+	     ;;; body
+	     (if>> (and (eq method :post) (> content-length 0))
+		   (and>> crlf>> (many>> par>>))))
+	    (_fn (&rest _)
+	      (list :method method :uri uri :headers headers :parameters (reverse parameters)))))))
 
 ;;;; A test server
 (defmethod keys ((h hash-table))

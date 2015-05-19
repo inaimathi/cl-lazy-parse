@@ -33,7 +33,7 @@ If any of them fail, the entire expression fails."
 	  (total 0)
 	  (rest parsers))
       (labels ((next! () (multiple-value-call #'cont (run! r (pop rest))))
-	       (cont (v &optional ct)
+	       (cont (v &optional (ct 0))
 		 (cond ((paused-p v)
 			(pause (multiple-value-call #'cont (resume v))))
 		       ((failed? v)
@@ -54,7 +54,7 @@ If they all fail, the entire expression fails."
   (lambda (r)
     (let ((rest parsers))
       (labels ((next! () (multiple-value-call #'cont (run! r (pop rest))))
-	       (cont (v &optional ct)
+	       (cont (v &optional (ct 0))
 		 (cond ((paused-p v)
 			(pause (multiple-value-call #'cont (resume v))))
 		       ((and rest (failed? v))
@@ -71,7 +71,7 @@ Returns the accumulated successes (the empty list, if there were none)."
     (let ((acc nil)
 	  (total 0))
       (labels ((next! () (multiple-value-call #'cont (run! r parser)))
-	       (cont (v &optional ct)
+	       (cont (v &optional (ct 0))
 		 (cond ((paused-p v)
 			(pause (multiple-value-call #'cont (resume v))))
 		       ((failed? v)
@@ -82,11 +82,30 @@ Returns the accumulated successes (the empty list, if there were none)."
 			(next!)))))
 	(next!)))))
 
+(defun optionally>> (parser)
+  "Takes a parser and runs it once. If it fails, returns NIL, otherwise, returns the given value."
+  (lambda (r)
+    (labels ((next! () (multiple-value-call #'cont (run! r parser)))
+	     (cont (v &optional (ct 0))
+	       (cond ((paused-p v)
+		      (pause (multiple-value-call #'cont (resume v))))
+		     ((failed? v)
+		      (values nil 0))
+		     (t
+		      (values v ct)))))
+      (next!))))
+
+(defun if-internal>> (thunk a b)
+  (lambda (r) (run! r (if (funcall thunk) a b))))
+
+(defmacro if>> (condition a &optional b)
+  `(if-internal>> (lambda () ,condition) ,a ,b))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Basic transformation
 (defun with (parser fn)
   (lambda (r)
-    (labels ((cont (v &optional ct)
+    (labels ((cont (v &optional (ct 0))
 	       (cond ((paused-p v)
 		      (pause (multiple-value-call #'cont (resume v))))
 		     ((failed? v) +fail+)
@@ -94,6 +113,11 @@ Returns the accumulated successes (the empty list, if there were none)."
 		      (values (apply fn v) ct))
 		     (t (values (funcall fn v) ct)))))
       (multiple-value-call #'cont (run! r parser)))))
+
+(defun with-log (parser message)
+  (with parser 
+	(lambda (&rest ln)
+	  (format t "~a ~s~%" message ln))))
 
 (defmacro _fn ((&rest args) &body body)
   (multiple-value-bind (final-args ignored)
@@ -126,6 +150,9 @@ Returns the accumulated successes (the empty list, if there were none)."
 (defmethod char>> ((pred string))
   (let ((lst (coerce pred 'list)))
     (char>> (lambda (c) (member c lst)))))
+
+(defun none-of>> (str)
+  (char>> (lambda (c) (not (find c str)))))
 
 (defun not-char>> (char)
   (char>> (lambda (c) (not (eql c char)))))
